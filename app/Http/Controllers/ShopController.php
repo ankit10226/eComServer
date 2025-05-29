@@ -4,8 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Address;
+use App\Models\Order;
+use App\Models\OrderDetail;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ShopController extends Controller
 {
@@ -125,4 +129,96 @@ class ShopController extends Controller
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }
+
+    public function fetchOrder($id)
+    {
+        try {
+            if($id === 'all'){
+                $orders = Order::with('address')
+                ->get(); 
+            }else{
+                $orders = Order::where('user_id', $id)
+                ->with('address')
+                ->get(); 
+            }
+
+            return response()->json([
+                'message' => 'Orders fetched successfully',
+                'order' => $orders
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function fetchOrderDetail($id)
+    {
+        try { 
+            $orderDetail = OrderDetail::where('order_id', $id)
+            ->with('product')
+            ->get();  
+
+            return response()->json([
+                'message' => 'Orders fetched successfully',
+                'orderDetail' => $orderDetail
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function placeOrder(Request $request)
+    {
+        $request->validate([
+            'userId' => 'required|exists:users,id',
+            'addressId' => 'required|exists:addresses,id',
+            'totalAmount' => 'required|numeric',
+            'totalItems' => 'required|integer',
+            'orderDetails' => 'required|array|min:1',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $order = Order::create([
+                'user_id' => $request->userId,
+                'address_id' => $request->addressId,
+                'total_amount' => $request->totalAmount,
+                'total_items' => $request->totalItems,
+                'status' => 'pending'
+            ]);
+
+            foreach ($request->orderDetails as $detail) {
+                OrderDetail::create([
+                    'order_id' => $order->id,
+                    'product_id' => $detail['productId'],
+                    'quantity' => $detail['quantity'],
+                    'price' => $detail['price'],
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Order placed successfully'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function updateOrderStatus($id,$value)
+    {
+        try {
+            $order = Order::find($id);
+
+            if (!$order) {
+                return response()->json(['message' => 'Order not found'], 404);
+            }
+
+            $order->update(['status' => $value]);
+
+            return response()->json(['message' => 'Order updated successfully'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
+
 }

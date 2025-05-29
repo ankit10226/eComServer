@@ -38,6 +38,13 @@ Route::middleware(['jwt.auth'])->group(function () {
     Route::post('/shop/upload/address', [ShopController::class, 'uploadAddress']);
     Route::put('/shop/update/address/{id}', [ShopController::class, 'updateAddress']);
     Route::delete('/shop/delete/address/{id}', [ShopController::class, 'deleteAddress']);
+    
+    Route::get('/shop/fetch/order/{id}', [ShopController::class, 'fetchOrder']);
+    Route::get('/shop/fetch/orderDetail/{id}', [ShopController::class, 'fetchOrderDetail']);
+    Route::put('/shop/update/orderStatus/{id}/{value}', [ShopController::class, 'updateOrderStatus']);
+
+    //Order Routes
+    Route::post('/user/place-order', [ShopController::class, 'placeOrder']);
 
 });
 
